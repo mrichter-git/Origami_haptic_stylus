@@ -19,7 +19,6 @@ from pyqtgraph.ptime import time
 PORT_LEFT = "COM6"
 
 
-
 def f(x, y):
     return np.sin(x) ** 10 + np.cos(10 + y * x) * np.cos(x)
 
@@ -221,6 +220,9 @@ class Tests(QWidget):
         self.graphWidget.setBackground('w')
         pen = pg.mkPen(color=(255, 0, 0))
         self.data_line =  self.graphWidget.plot(self.x, self.y, pen=pen)
+        # styles = {'color':'r', 'font-size':'20px'}
+        # self.graphWidget.setLabel('left', 'Temperature (°C)', **styles)
+        # self.graphWidget.setLabel('bottom', 'Hour (H)', **styles)
 
         self.timer = QtCore.QTimer()
         self.timer.setInterval(50)
@@ -266,6 +268,7 @@ class Tests(QWidget):
         self.x = [0]*100
         self.y = [0]*100
         self.data_line.setData(self.x, self.y)
+        
 
     def send(self):
         ser.write("stop".encode())
