@@ -1,0 +1,2 @@
+C:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/build/CMakeFiles/ZERO_CHECK.dir
