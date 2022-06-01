@@ -8,11 +8,11 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "c:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/include",
-                "c:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/src",
+                "c:/Users/micri/Documents/PlatformIO/Projects/Origami_haptic_stylus/include",
+                "c:/Users/micri/Documents/PlatformIO/Projects/Origami_haptic_stylus/src",
                 "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Encoder",
                 "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Encoder/utility",
-                "c:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/.pio/libdeps/teensy41/SparkFun VL6180 Sensor/src",
+                "c:/Users/micri/Documents/PlatformIO/Projects/Origami_haptic_stylus/.pio/libdeps/teensy41/SparkFun VL6180 Sensor/src",
                 "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Wire",
                 "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Wire/utility",
                 "C:/Users/micri/.platformio/packages/framework-arduinoteensy/cores/teensy4",
@@ -116,11 +116,11 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "c:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/include",
-                    "c:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/src",
+                    "c:/Users/micri/Documents/PlatformIO/Projects/Origami_haptic_stylus/include",
+                    "c:/Users/micri/Documents/PlatformIO/Projects/Origami_haptic_stylus/src",
                     "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Encoder",
                     "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Encoder/utility",
-                    "c:/Users/micri/Documents/PlatformIO/Projects/TEST_TEENSY/.pio/libdeps/teensy41/SparkFun VL6180 Sensor/src",
+                    "c:/Users/micri/Documents/PlatformIO/Projects/Origami_haptic_stylus/.pio/libdeps/teensy41/SparkFun VL6180 Sensor/src",
                     "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Wire",
                     "C:/Users/micri/.platformio/packages/framework-arduinoteensy/libraries/Wire/utility",
                     "C:/Users/micri/.platformio/packages/framework-arduinoteensy/cores/teensy4",

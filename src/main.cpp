@@ -17,6 +17,7 @@
 
 //Software ----------------------------------------------
 #define DT			50 //[ns]
+#define COMM_DT		2000 //[ns]
 #define ARW_VAL 	0.1 
 
 #define DIST_INCR       255/3000
@@ -29,15 +30,19 @@
 
 Encoder motor_enc(MOTOR_ENC_C1, MOTOR_ENC_C2);
 VL6180x sensor(VL6180X_ADDRESS);
-// IntervalTimer Timer1;
+IntervalTimer ControlTimer;
+IntervalTimer CommTimer;
 
-void measure_loop();
+void controlLoop();
+void commLoop();
 volatile bool stop = 0;
 volatile float filtDistance;
 volatile float prev_filtDistance;
+volatile float ambientLight = 0;
 volatile long encoderPos = 0;
 volatile long prev_encoderPos = 0;
 volatile float Integral = 0;
+volatile float Test_val = 0;
 
 void setup() {
 	Serial.begin(19200); // Start Serial at 57600bps
@@ -62,16 +67,21 @@ void setup() {
 	pinMode(MOTOR_IN2, OUTPUT);
 
 	Serial.println("Staring test");
-	measure_loop();
+	commLoop();
 	delay(100);
 
-	// Timer1.priority(3);
-	// Timer1.begin(measure_loop, DT);
+	ControlTimer.priority(1);
+	ControlTimer.begin(controlLoop, DT);
+	CommTimer.priority(2);
+	CommTimer.begin(commLoop, COMM_DT);
 
 }
 
-
 void loop() {
+	Serial.println("Nothing is happening");
+}
+
+void controlLoop() {
 
 	float control_value = 0;
 	int cont_IN1 = 0;
@@ -91,24 +101,25 @@ void loop() {
 		digitalWrite(MOTOR_IN1, LOW);
 		digitalWrite(MOTOR_IN2, LOW);
 	}
-	measure_loop();
-	Serial.print(",");
-	Serial.print("test_val");
-	Serial.print(":");
-	Serial.print("1_");
-	Serial.print(control_value);
-	Serial.print(" 2_");
-	Serial.print(cont_IN2);
 	
+	// Do measures
+	// Encoder --------
+	encoderPos = motor_enc.read();
+
+	// ToF ------------
+	filtDistance = LowPassFilter(prev_filtDistance, sensor.getDistance(), DT, CUT_OFF_FREQ);
+
+	ambientLight = sensor.getAmbientLight(GAIN_20);
 
 
-	// end transmission line
-	Serial.println();
-	delay(DT);
+	//Setting previous values
+	prev_filtDistance = filtDistance; 
+	prev_encoderPos = encoderPos;
+
 
 }
 
-void measure_loop(){
+void commLoop(){
 
 	if (Serial.available()) {
 		Serial.read();
@@ -119,22 +130,25 @@ void measure_loop(){
 	else {
 
 		// Encoder --------
-		encoderPos= motor_enc.read();
 		Serial.print("Motor encoder (counts):");
 		Serial.print(encoderPos);
 
 		// ToF ------------
-		filtDistance = LowPassFilter(prev_filtDistance, sensor.getDistance(), DT, CUT_OFF_FREQ);
 		Serial.print(",");
 		Serial.print("Filtered distance measured (mm):");
 		Serial.print(filtDistance);
 
 		Serial.print(",");
 		Serial.print("Ambient light:");
-		Serial.print(sensor.getAmbientLight(GAIN_20));
+		Serial.print(ambientLight);
 
-		//Setting previous values
-		prev_filtDistance = filtDistance; 
-		prev_encoderPos = encoderPos;
+		Serial.print(",");
+		Serial.print("test_val");
+		Serial.print(":");
+		Serial.print(Test_val);
+
 	}
+	
+	// end transmission line
+	Serial.println();
 }
