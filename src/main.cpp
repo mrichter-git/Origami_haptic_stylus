@@ -3,6 +3,7 @@
 #include <SparkFun_VL6180X.h>
 #include <Encoder.h>
 #include <Controller.hpp>
+#include <string>
 
 // Hardware ------------------------------------------------
 #define MOTOR_IN1       22
@@ -17,7 +18,7 @@
 //Software ----------------------------------------------
 #define DT			350 //[us] 
 #define COMM_DT		20000 //[us] --> 50Hz
-#define ARW_VAL 	0.1 
+#define ARW_VAL 	100 
 
 #define CUT_OFF_FREQ 	1000 //[Hz]
 
@@ -30,14 +31,16 @@ IntervalTimer CommTimer;
 void controlLoop();
 void commLoop();
 
+float Integral = 0.0f;
+
 volatile bool stop = 0;
 volatile float filtDistance;
 volatile float prev_filtDistance;
 volatile float ambientLight = 0.0f;
 volatile long encoderPos = 12;
-volatile long prev_encoderPos = 13;
-volatile float Integral = 0.0f;
+volatile float prev_error = 0.0f;
 volatile float Test_val = 0.0f;
+volatile double input;
 
 void setup() {
 	Serial.begin(19200); // Start Serial at 57600bps
@@ -69,7 +72,6 @@ void setup() {
 
 }
 
-
 void loop(){
 }
 
@@ -80,7 +82,9 @@ void controlLoop() {
 	float control_value = 0;
 	int cont_IN1 = 0;
 	int cont_IN2 = 0;
-	control_value = computePID(2.0f, 0, 0.2f, -float(encoderPos), -float(prev_encoderPos), DT/1000000.0f, ARW_VAL, Integral);
+	float error = 0.0f - float(encoderPos);
+	control_value = computePID(input, 1.0f, 0.00001f, error, prev_error, DT/1000000.0f, ARW_VAL, Integral);
+	Test_val = control_value;
 
 	if (control_value < 0) cont_IN1 = -int(control_value);
 	else cont_IN2 = int(control_value);
@@ -99,17 +103,18 @@ void controlLoop() {
 
 	//Setting previous values
 	prev_filtDistance = filtDistance; 
-	prev_encoderPos = encoderPos;
+	prev_error = error;
 }
 
 void commLoop(){
 
-
-
 	if (Serial.available()) {
-		Serial.read();
-		Serial.print("Turning motor off,");
-		stop = 1;
+		String serial_in = Serial.readStringUntil('\n');
+		if (serial_in == "stop"){
+			Serial.print("Turning motor off,");
+			stop = 1;
+		}
+		else input = serial_in.toFloat();
 	}
 	if (stop) Serial.print("Stopped,");
 	else {
@@ -130,7 +135,7 @@ void commLoop(){
 		Serial.print(",");
 		Serial.print("test_val");
 		Serial.print(":");
-		Serial.print(encoderPos);
+		Serial.print(Test_val);
 
 	}
 

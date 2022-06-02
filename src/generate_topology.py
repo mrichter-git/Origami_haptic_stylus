@@ -193,6 +193,7 @@ class Tests(QWidget):
         layout = QGridLayout()
         self.setLayout(layout)
         self.input = read_Serial()
+        self.output = ""
 
         self.textbox = QLineEdit(self)
         self.textbox.move(20, 20)
@@ -207,6 +208,15 @@ class Tests(QWidget):
 
         self.stop_btn = QtWidgets.QPushButton(text="Stop", clicked=self.send )
 
+        self.Labeltb4 = QLabel(self)
+        self.Labeltb4.setText('Test input')
+        self.Labeltb4.move(20, 20)
+        self.textbox4 = QLineEdit(self)
+        self.textbox4.resize(280,40)
+        self.textbox4.move(80, 20)
+        self.textbox4.textChanged.connect(self.textadd)
+        self.textbox4.editingFinished.connect(self.textsend)
+
         self.graph_sel = QComboBox()
         items = [i.split(':')[0] for i in self.input]
         self.graph_sel.addItems(items)
@@ -214,8 +224,8 @@ class Tests(QWidget):
         self.graph_idx = 0
 
         self.graphWidget = pg.PlotWidget()
-        self.x = list(range(100))
-        self.y = list(range(100))
+        self.x = list(range(70))
+        self.y = list(range(70))
 
         self.graphWidget.setBackground('w')
         pen = pg.mkPen(color=(255, 0, 0))
@@ -237,7 +247,9 @@ class Tests(QWidget):
         layout.addWidget(self.textbox2, 0, 2, 1, 1)
         layout.addWidget(self.textbox3, 0, 3, 1, 1)
         layout.addWidget(self.graph_sel, 0, 4, 1, 1)
-        layout.addWidget(self.graphWidget, 1,0,1,5 )
+        layout.addWidget(self.Labeltb4, 1, 0, 1, 1)
+        layout.addWidget(self.textbox4, 1, 1, 1, 1)
+        layout.addWidget(self.graphWidget, 2,0,1,5 )
 
     def update(self):
         self.input = read_Serial()
@@ -246,7 +258,7 @@ class Tests(QWidget):
         try:
             self.x = self.x[1:]  # Remove the first y element.
             self.x.append(self.x[-1] + 1)  # Add a new value 1 higher than the last.
-
+    
             self.y = self.y[1:]  # Remove the first 
             self.y.append(float(self.input[self.graph_idx].split(":")[1]))
             self.data_line.setData(self.x, self.y)  # Update the data
@@ -265,13 +277,19 @@ class Tests(QWidget):
     def graph_index_changed(self, index):
         #print("Shrubbery")
         self.graph_idx = index
-        self.x = [0]*100
-        self.y = [0]*100
+        self.x = [0]*70
+        self.y = [0]*70
         self.data_line.setData(self.x, self.y)
         
 
     def send(self):
         ser.write("stop".encode())
+
+    def textsend(self):
+        ser.write(self.output.encode())
+
+    def textadd(self, text):
+        self.output = (text)
 
 ser = serial.Serial()
 ser.baudrate = 19200

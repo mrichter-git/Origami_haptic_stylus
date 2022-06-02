@@ -62,13 +62,14 @@ float ComputeNumIntegral(float prevValue, float currentValue, float dt, float in
 * @return the control value
 */
 float computePID(float Kp, float Ki, float Kd, float error, float prevError,
-				 float dt, float arw_value, float integral)
+				 float dt, float arw_value, float &integral)
 {
 	//Proportional term
 	float P_term = Kp*error;
 
 	//Integral term I
-	float I_term = Ki*ComputeNumIntegral(prevError, error, dt, integral);
+	integral += dt*error;
+	float I_term = Ki*integral;
 
 	//Anti-reset windup
 	if (I_term > arw_value) I_term = arw_value;
