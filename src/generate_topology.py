@@ -294,7 +294,10 @@ class Tests(QWidget):
 ser = serial.Serial()
 ser.baudrate = 19200
 ser.port = PORT_LEFT 
-ser.open()
+try:
+    ser.open()
+except:
+    print("There was an issue when opening the serial port")
 app = QtWidgets.QApplication(sys.argv)
 w = MainWindow()
 app.exec_()

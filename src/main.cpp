@@ -13,6 +13,8 @@
 #define TOF_SDA         18
 #define TOF_SCL         19
 
+#define MOTOR_OFFSET 	100
+
 #define VL6180X_ADDRESS 0x29
 
 //Software ----------------------------------------------
@@ -80,26 +82,32 @@ void controlLoop() {
 	filtDistance = sensor.getDistance();
 	ambientLight = sensor.getAmbientLight(GAIN_20);
 	float control_value = 0;
-	int cont_IN1 = 0;
-	int cont_IN2 = 0;
 	float error = 0.0f - float(encoderPos);
-	control_value = computePID(input, 1.0f, 0.00001f, error, prev_error, DT/1000000.0f, ARW_VAL, Integral);
+	control_value = computePID(1.2f, input, 0.0f, error, prev_error, DT/1000000.0f, ARW_VAL, Integral);
 	Test_val = control_value;
 
-	if (control_value < 0) cont_IN1 = -int(control_value);
-	else cont_IN2 = int(control_value);
 
 	if (!stop){
- 		analogWrite(MOTOR_IN1, cont_IN1);
-		analogWrite(MOTOR_IN2, cont_IN2);
+		if (control_value < 0) {
+			analogWrite(MOTOR_IN1, -int(control_value)+MOTOR_OFFSET);
+			digitalWrite(MOTOR_IN2, LOW);
+		}
+		else{
+			digitalWrite(MOTOR_IN1, LOW);
+			analogWrite(MOTOR_IN2, int(control_value) + MOTOR_OFFSET);
+		}
+		// if ((encoderPos >= -150) && (encoderPos <= 0)){
+		// 	}
+		// }
+		// else {
+		// 	digitalWrite(MOTOR_IN1, LOW);
+		// 	digitalWrite(MOTOR_IN2, LOW);
+		// }
 	}
 	else {
 		digitalWrite(MOTOR_IN1, LOW);
 		digitalWrite(MOTOR_IN2, LOW);
 	}
-
-	if (control_value < 0) cont_IN1 = -int(control_value);
-	else cont_IN2 = int(control_value);
 
 	//Setting previous values
 	prev_filtDistance = filtDistance; 
@@ -126,16 +134,16 @@ void commLoop(){
 		// ToF ------------
 		Serial.print(",");
 		Serial.print("Filtered distance measured (mm):");
-		Serial.print(filtDistance);
+		Serial.print(filtDistance, 4);
 
 		Serial.print(",");
 		Serial.print("Ambient light:");
-		Serial.print(ambientLight);
+		Serial.print(ambientLight, 3);
 
 		Serial.print(",");
 		Serial.print("test_val");
 		Serial.print(":");
-		Serial.print(Test_val);
+		Serial.print(Test_val, 5);
 
 	}
 
