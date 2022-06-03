@@ -292,7 +292,7 @@ class Tests(QWidget):
         self.output = (text)
 
 ser = serial.Serial()
-ser.baudrate = 19200
+ser.baudrate = 57600
 ser.port = PORT_LEFT 
 try:
     ser.open()

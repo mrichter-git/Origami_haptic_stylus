@@ -43,9 +43,10 @@ volatile long encoderPos = 12;
 volatile float prev_error = 0.0f;
 volatile float Test_val = 0.0f;
 volatile double input;
+volatile unsigned long prev_time = 0;
 
 void setup() {
-	Serial.begin(19200); // Start Serial at 57600bps
+	Serial.begin(57600); // Start Serial at 57600bps
 	Wire.begin();         // Start I2C library
 	delay(100);           // delay .1s
 
@@ -67,9 +68,9 @@ void setup() {
 	delay(100);
 
 	// other interrupts prio of 128
-	ControlTimer.priority(200);
+	ControlTimer.priority(220);
 	ControlTimer.begin(controlLoop, DT);
-	CommTimer.priority(255);
+	CommTimer.priority(219);
 	CommTimer.begin(commLoop, COMM_DT);
 
 }
@@ -78,13 +79,13 @@ void loop(){
 }
 
 void controlLoop() {
-	encoderPos= motor_enc.read();
-	filtDistance = sensor.getDistance();
-	ambientLight = sensor.getAmbientLight(GAIN_20);
+	unsigned long time = micros();
+	// encoderPos= motor_enc.read();
 	float control_value = 0;
 	float error = 0.0f - float(encoderPos);
-	control_value = computePID(1.2f, input, 0.0f, error, prev_error, DT/1000000.0f, ARW_VAL, Integral);
-	Test_val = control_value;
+
+	control_value = computePID(2.0f, 0.5f, input, error, prev_error, (time-prev_time)/1000.0f, ARW_VAL, Integral);
+	Test_val += (1);
 
 
 	if (!stop){
@@ -112,10 +113,15 @@ void controlLoop() {
 	//Setting previous values
 	prev_filtDistance = filtDistance; 
 	prev_error = error;
+	prev_time = time;
 }
 
 void commLoop(){
 
+	encoderPos= motor_enc.read();
+	delayMicroseconds(2000);
+	// filtDistance = sensor.getDistance();
+	// ambientLight = sensor.getAmbientLight(GAIN_20);
 	if (Serial.available()) {
 		String serial_in = Serial.readStringUntil('\n');
 		if (serial_in == "stop"){
@@ -132,13 +138,13 @@ void commLoop(){
 		Serial.print(encoderPos);
 
 		// ToF ------------
-		Serial.print(",");
-		Serial.print("Filtered distance measured (mm):");
-		Serial.print(filtDistance, 4);
+		// Serial.print(",");
+		// Serial.print("Filtered distance measured (mm):");
+		// Serial.print(filtDistance, 4);
 
-		Serial.print(",");
-		Serial.print("Ambient light:");
-		Serial.print(ambientLight, 3);
+		// Serial.print(",");
+		// Serial.print("Ambient light:");
+		// Serial.print(ambientLight, 3);
 
 		Serial.print(",");
 		Serial.print("test_val");
