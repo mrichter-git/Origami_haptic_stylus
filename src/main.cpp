@@ -13,40 +13,57 @@
 #define TOF_SDA         18
 #define TOF_SCL         19
 
-#define MOTOR_OFFSET 	100
+#define MOTOR_OFFSET 	150
 
 #define VL6180X_ADDRESS 0x29
+
+#define ENCODER_OPTIMIZE_INTERRUPTS
+
+#define COUNTS2MM(x) 22.0*(x)/244.0
+
 
 //Software ----------------------------------------------
 #define DT			350 //[us] 
 #define COMM_DT		20000 //[us] --> 50Hz
-#define ARW_VAL 	100 
+#define ARW_VAL 	200 
 
 #define CUT_OFF_FREQ 	1000 //[Hz]
 
 
 Encoder motor_enc(MOTOR_ENC_C1, MOTOR_ENC_C2);
 VL6180x sensor(VL6180X_ADDRESS);
-IntervalTimer ControlTimer;
-IntervalTimer CommTimer;
 
-void controlLoop();
-void commLoop();
+void control();
+void comm();
 
 float Integral = 0.0f;
 
 volatile bool stop = 0;
+
 volatile float filtDistance;
 volatile float prev_filtDistance;
-volatile float ambientLight = 0.0f;
-volatile long encoderPos = 12;
+
+// volatile float ambientLight = 0.0f;
+
+volatile float error = 0;
 volatile float prev_error = 0.0f;
 volatile float Test_val = 0.0f;
 volatile double input;
+volatile unsigned long time = 0;
 volatile unsigned long prev_time = 0;
+volatile bool measure_dist = 0;
+
+volatile long encoderPos = 0;
+volatile long prev_encoderPos = 0;
+volatile float speed = 0.0f;
+volatile float prev_speed = 0.0f;
+
+volatile float Kp = 0.0f;
+volatile float Ki = 0.0f;
+volatile float Kd = 0.0f;
 
 void setup() {
-	Serial.begin(57600); // Start Serial at 57600bps
+	Serial.begin(9600); // Start Serial at 9600bps
 	Wire.begin();         // Start I2C library
 	delay(100);           // delay .1s
 
@@ -68,69 +85,104 @@ void setup() {
 	delay(100);
 
 	// other interrupts prio of 128
-	ControlTimer.priority(220);
-	ControlTimer.begin(controlLoop, DT);
-	CommTimer.priority(219);
-	CommTimer.begin(commLoop, COMM_DT);
+	// ControlTimer.priority(220);
+	// ControlTimer.begin(controlLoop, DT);
+	// CommTimer.priority(219);
+	// CommTimer.begin(commLoop, COMM_DT);
 
 }
 
 void loop(){
+	time = micros();
+	encoderPos = motor_enc.read();
+	error = 0.0f - float(encoderPos);
+
+	control();
+	comm();
+
+	prev_filtDistance = filtDistance; 
+	prev_error = error;
+	prev_time = time;
+	prev_speed = speed;
+	prev_encoderPos = encoderPos;
+
+	delayMicroseconds(DT);
 }
 
-void controlLoop() {
-	unsigned long time = micros();
-	// encoderPos= motor_enc.read();
+void control(){
+
 	float control_value = 0;
-	float error = 0.0f - float(encoderPos);
+	float dt = (time-prev_time)/1000000.0f;
+	error = 0.0f - float(encoderPos);
 
-	control_value = computePID(2.0f, 0.5f, input, error, prev_error, (time-prev_time)/1000.0f, ARW_VAL, Integral);
-	Test_val += (1);
+	control_value = computePID(Kp, Ki, Kd, error, prev_error, dt, ARW_VAL, Integral);
 
+	speed = ComputeNumDerivative(float(prev_encoderPos), float(encoderPos), DT);
+	// speed = LowPassFilter(prev_speed, speed, dt, CUT_OFF_FREQ);
+	Test_val = speed;
+
+	control_value += StaticFricComp(speed);
+	control_value += ViscousFricComp(speed);
+
+	if (Ki == 0) Integral = 0; //stops from keeping previous accumulation
 
 	if (!stop){
 		if (control_value < 0) {
-			analogWrite(MOTOR_IN1, -int(control_value)+MOTOR_OFFSET);
+			analogWrite(MOTOR_IN1, -int(control_value));
 			digitalWrite(MOTOR_IN2, LOW);
 		}
 		else{
 			digitalWrite(MOTOR_IN1, LOW);
-			analogWrite(MOTOR_IN2, int(control_value) + MOTOR_OFFSET);
+			analogWrite(MOTOR_IN2, int(control_value));
 		}
-		// if ((encoderPos >= -150) && (encoderPos <= 0)){
-		// 	}
-		// }
-		// else {
-		// 	digitalWrite(MOTOR_IN1, LOW);
-		// 	digitalWrite(MOTOR_IN2, LOW);
-		// }
 	}
 	else {
 		digitalWrite(MOTOR_IN1, LOW);
 		digitalWrite(MOTOR_IN2, LOW);
 	}
 
-	//Setting previous values
-	prev_filtDistance = filtDistance; 
-	prev_error = error;
-	prev_time = time;
+
+
+	// Test_val = (control_value);
 }
 
-void commLoop(){
-
-	encoderPos= motor_enc.read();
-	delayMicroseconds(2000);
-	// filtDistance = sensor.getDistance();
+void comm(){
+	if (measure_dist) filtDistance = sensor.getDistance();
 	// ambientLight = sensor.getAmbientLight(GAIN_20);
+
+	// Reading from serial port
 	if (Serial.available()) {
 		String serial_in = Serial.readStringUntil('\n');
 		if (serial_in == "stop"){
 			Serial.print("Turning motor off,");
 			stop = 1;
 		}
-		else input = serial_in.toFloat();
+		else if (serial_in == "clear"){
+			Serial.print("Clearing encoder values,");
+			motor_enc.write(0);
+		}
+		else if (serial_in == "measure") measure_dist = 1;
+		else if (serial_in == "no_measure") measure_dist = 0;
+
+		else{
+			int idx_2 = 0;
+			int idx = serial_in.indexOf(",");
+			String sub_str = serial_in.substring(0, idx);
+			Kp = sub_str.toFloat();
+
+			idx_2 = serial_in.indexOf(",", ++idx);
+			sub_str = serial_in.substring(idx, idx_2);
+			Ki = sub_str.toFloat();
+			idx = idx_2;
+			
+			idx_2 = serial_in.indexOf(",", ++idx);
+			sub_str = serial_in.substring(idx, idx_2);
+			Kd = sub_str.toFloat();
+			input = serial_in.toFloat();
+		} 
 	}
 	if (stop) Serial.print("Stopped,");
+	// Writing to serial port
 	else {
 
 		// Encoder --------
@@ -138,9 +190,19 @@ void commLoop(){
 		Serial.print(encoderPos);
 
 		// ToF ------------
-		// Serial.print(",");
-		// Serial.print("Filtered distance measured (mm):");
-		// Serial.print(filtDistance, 4);
+		if (measure_dist){
+			Serial.print(",");
+			Serial.print("ToF distance measured (mm):");
+			Serial.print(filtDistance, 4);
+		}
+
+		Serial.print(",");
+		Serial.print("delta time (us):");
+		Serial.print(time - prev_time, 1);
+
+		Serial.print(",");
+		Serial.print("Encoder distance linearized (mm):");
+		Serial.print(COUNTS2MM(float(encoderPos)), 4);
 
 		// Serial.print(",");
 		// Serial.print("Ambient light:");

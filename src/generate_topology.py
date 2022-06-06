@@ -38,6 +38,7 @@ def return_Z(x,y):
         return f(x,y)
 
 def read_Serial():
+    ser.reset_input_buffer()
     ser_bytes = ser.readline()
     decoded_bytes = (ser_bytes[0:len(ser_bytes)-2].decode("utf-8")).split(",")
     return decoded_bytes
@@ -83,7 +84,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.button1.clicked.connect(self.switch2)
 
         topMLayout = QFormLayout()
-        topMLayout.addRow("hoo", QLineEdit())
+        topMLayout.addRow("Hello there", QLineEdit())
         
         topLayout = QHBoxLayout()
         topLayout.addLayout(topLLayout)
@@ -130,8 +131,6 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.text += " Stylus not touching"
         
-        self.sc.test
-
         tabletEvent.accept()
         self.update()
 
@@ -217,10 +216,14 @@ class Tests(QWidget):
         self.textbox4.textChanged.connect(self.textadd)
         self.textbox4.editingFinished.connect(self.textsend)
 
+        self.measure_btn = QtWidgets.QPushButton(text="Measure with ToF?", clicked=self.send_measure)
+        self.measure_btn.setCheckable(True)
+
         self.graph_sel = QComboBox()
         items = [i.split(':')[0] for i in self.input]
         self.graph_sel.addItems(items)
         self.graph_sel.currentIndexChanged.connect(self.graph_index_changed)
+        self.graph_sel.objectNameChanged
         self.graph_idx = 0
 
         self.graphWidget = pg.PlotWidget()
@@ -249,6 +252,7 @@ class Tests(QWidget):
         layout.addWidget(self.graph_sel, 0, 4, 1, 1)
         layout.addWidget(self.Labeltb4, 1, 0, 1, 1)
         layout.addWidget(self.textbox4, 1, 1, 1, 1)
+        layout.addWidget(self.measure_btn, 1, 2, 1, 1)
         layout.addWidget(self.graphWidget, 2,0,1,5 )
 
     def update(self):
@@ -263,6 +267,9 @@ class Tests(QWidget):
             self.y.append(float(self.input[self.graph_idx].split(":")[1]))
             self.data_line.setData(self.x, self.y)  # Update the data
         except:
+            self.x = [0]*70
+            self.y = [0]*70
+            self.data_line.setData(self.x, self.y)  # Update the data
             print("Error updating plot")
 
     def update_text(self):
@@ -279,11 +286,32 @@ class Tests(QWidget):
         self.graph_idx = index
         self.x = [0]*70
         self.y = [0]*70
-        self.data_line.setData(self.x, self.y)
-        
+        self.data_line.setData(self.x, self.y)       
 
     def send(self):
         ser.write("stop".encode())
+    
+    def send_measure(self):
+        if self.measure_btn.isChecked():
+            # setting background color to light-blue
+            self.measure_btn.setStyleSheet("background-color : lightblue")
+            self.measure_btn.setText("Measuring with ToF")
+            ser.write("measure".encode())
+        # if it is unchecked
+        else:
+            ser.write("no_measure".encode())
+            self.measure_btn.setText("Measure with ToF?")
+
+        # refresh list of inputs
+        self.graph_idx = 0
+        self.x = [0]*70
+        self.y = [0]*70
+        self.data_line.setData(self.x, self.y) 
+        self.graph_sel.clear()
+        self.update()
+        items = [i.split(':')[0] for i in self.input]
+        self.graph_sel.addItems(items)
+
 
     def textsend(self):
         ser.write(self.output.encode())
@@ -292,7 +320,7 @@ class Tests(QWidget):
         self.output = (text)
 
 ser = serial.Serial()
-ser.baudrate = 57600
+ser.baudrate = 9600
 ser.port = PORT_LEFT 
 try:
     ser.open()

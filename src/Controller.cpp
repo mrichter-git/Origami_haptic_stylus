@@ -83,3 +83,16 @@ float computePID(float Kp, float Ki, float Kd, float error, float prevError,
 	//return P_term + I_term + D_term;
 	return P_term + I_term + D_term;
 }
+
+float ViscousFricComp(float speed)
+{
+	if(speed > DEADZONE_VISCOUS || speed < -DEADZONE_VISCOUS) return speed*FRIC_VISCOUS_COEFF;
+	else return 0;
+}
+
+float StaticFricComp(float speed)
+{
+	if(speed > DEADZONE_DRY) return FRIC_STATIC_NEG;
+	else if(speed < -DEADZONE_DRY) return -FRIC_STATIC_NEG;
+	else return 0;
+}
