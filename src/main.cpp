@@ -13,7 +13,9 @@
 #define TOF_SDA         18
 #define TOF_SCL         19
 
-#define MOTOR_OFFSET 	150
+#define MOTOR_OFFSET 	0
+#define PWM_RESOLUTION_BITS 10
+#define PWM_MAX 		(pow(2.0, double(PWM_RESOLUTION_BITS)))
 
 #define VL6180X_ADDRESS 0x29
 
@@ -43,9 +45,9 @@ volatile bool stop = 0;
 volatile float filtDistance;
 volatile float prev_filtDistance;
 
-// volatile float ambientLight = 0.0f;
+volatile float ambientLight = 0.0f;
 
-volatile float error = 0;
+volatile float error = 0.0f;
 volatile float prev_error = 0.0f;
 volatile float Test_val = 0.0f;
 volatile double input;
@@ -61,6 +63,8 @@ volatile float prev_speed = 0.0f;
 volatile float Kp = 0.0f;
 volatile float Ki = 0.0f;
 volatile float Kd = 0.0f;
+
+volatile int target = 0;
 
 void setup() {
 	Serial.begin(9600); // Start Serial at 9600bps
@@ -81,8 +85,13 @@ void setup() {
 	pinMode(MOTOR_IN1, OUTPUT);
 	pinMode(MOTOR_IN2, OUTPUT);
 
+	analogWriteResolution(PWM_RESOLUTION_BITS);
+
+
 	Serial.println("Starting test");
 	delay(100);
+
+
 
 	// other interrupts prio of 128
 	// ControlTimer.priority(220);
@@ -93,16 +102,18 @@ void setup() {
 }
 
 void loop(){
-	time = micros();
+	
 	encoderPos = motor_enc.read();
-	error = 0.0f - float(encoderPos);
 
+	time = micros();
 	control();
+	prev_time = time;
+
 	comm();
+
 
 	prev_filtDistance = filtDistance; 
 	prev_error = error;
-	prev_time = time;
 	prev_speed = speed;
 	prev_encoderPos = encoderPos;
 
@@ -112,28 +123,33 @@ void loop(){
 void control(){
 
 	float control_value = 0;
-	float dt = (time-prev_time)/1000000.0f;
-	error = 0.0f - float(encoderPos);
+	float dt = float(time-prev_time)/1000.0f;
+	error = float(target - encoderPos);
 
 	control_value = computePID(Kp, Ki, Kd, error, prev_error, dt, ARW_VAL, Integral);
-
-	speed = ComputeNumDerivative(float(prev_encoderPos), float(encoderPos), DT);
+	if (control_value >= PWM_MAX) control_value = PWM_MAX-2;
+	if (-control_value >= PWM_MAX) control_value = -PWM_MAX+2;
+	// speed = ComputeNumDerivative(float(prev_encoderPos), float(encoderPos), DT);
 	// speed = LowPassFilter(prev_speed, speed, dt, CUT_OFF_FREQ);
-	Test_val = speed;
+	// Test_val = speed;
 
-	control_value += StaticFricComp(speed);
-	control_value += ViscousFricComp(speed);
+	// control_value += StaticFricComp(speed);
+	// control_value += ViscousFricComp(speed);
 
-	if (Ki == 0) Integral = 0; //stops from keeping previous accumulation
+	if (Ki == 0) Integral = 0.0f; //stops from keeping previous accumulation
+
+
+	Test_val = (int(control_value));
+	// Test_val += (error-prev_error)/1.0f;
 
 	if (!stop){
 		if (control_value < 0) {
-			analogWrite(MOTOR_IN1, -int(control_value));
+			analogWrite(MOTOR_IN1, -int(control_value)+MOTOR_OFFSET);
 			digitalWrite(MOTOR_IN2, LOW);
 		}
 		else{
 			digitalWrite(MOTOR_IN1, LOW);
-			analogWrite(MOTOR_IN2, int(control_value));
+			analogWrite(MOTOR_IN2, int(control_value)+MOTOR_OFFSET);
 		}
 	}
 	else {
@@ -141,14 +157,13 @@ void control(){
 		digitalWrite(MOTOR_IN2, LOW);
 	}
 
-
-
-	// Test_val = (control_value);
 }
 
 void comm(){
-	if (measure_dist) filtDistance = sensor.getDistance();
-	// ambientLight = sensor.getAmbientLight(GAIN_20);
+	if (measure_dist){
+		filtDistance = sensor.getDistance();
+		ambientLight = sensor.getAmbientLight(GAIN_20);
+	}
 
 	// Reading from serial port
 	if (Serial.available()) {
@@ -160,10 +175,21 @@ void comm(){
 		else if (serial_in == "clear"){
 			Serial.print("Clearing encoder values,");
 			motor_enc.write(0);
+			Kp = 0.0f;
+			Ki = 0.0f;
+			Kd = 0.0f;
+
 		}
 		else if (serial_in == "measure") measure_dist = 1;
 		else if (serial_in == "no_measure") measure_dist = 0;
+		else if (serial_in[0] == 'Z'){
 
+			int idx = serial_in.indexOf(":");
+			int idx_2 = serial_in.indexOf(",", ++idx);
+			String sub_str = serial_in.substring(idx, idx_2);
+			target = sub_str.toFloat();
+
+		}
 		else{
 			int idx_2 = 0;
 			int idx = serial_in.indexOf(",");
@@ -178,6 +204,12 @@ void comm(){
 			idx_2 = serial_in.indexOf(",", ++idx);
 			sub_str = serial_in.substring(idx, idx_2);
 			Kd = sub_str.toFloat();
+			idx = idx_2;
+
+			idx_2 = serial_in.indexOf(",", ++idx);
+			sub_str = serial_in.substring(idx, idx_2);
+			target = sub_str.toFloat();
+
 			input = serial_in.toFloat();
 		} 
 	}
@@ -194,6 +226,10 @@ void comm(){
 			Serial.print(",");
 			Serial.print("ToF distance measured (mm):");
 			Serial.print(filtDistance, 4);
+			
+			Serial.print(",");
+			Serial.print("Ambient light:");
+			Serial.print(ambientLight, 3);
 		}
 
 		Serial.print(",");
@@ -203,10 +239,6 @@ void comm(){
 		Serial.print(",");
 		Serial.print("Encoder distance linearized (mm):");
 		Serial.print(COUNTS2MM(float(encoderPos)), 4);
-
-		// Serial.print(",");
-		// Serial.print("Ambient light:");
-		// Serial.print(ambientLight, 3);
 
 		Serial.print(",");
 		Serial.print("test_val");

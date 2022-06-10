@@ -9,8 +9,8 @@ float ViscousFricComp(float speed);
 float StaticFricComp(float speed);
 
 #define DEADZONE_DRY 3
-#define FRIC_STATIC_POS 150
-#define FRIC_STATIC_NEG 150
+#define FRIC_STATIC_POS 50
+#define FRIC_STATIC_NEG 50
 
 #define DEADZONE_VISCOUS 1
 #define FRIC_VISCOUS_COEFF 10

@@ -18,24 +18,28 @@ from pyqtgraph.ptime import time
 
 PORT_LEFT = "COM6"
 
+TL_X = 260
+TL_Y = 270
+BR_X = 1700
+BR_Y = 910
+MAX_X = 1920
+MAX_Y = 1080
+
 
 def f(x, y):
     return np.sin(x) ** 10 + np.cos(10 + y * x) * np.cos(x)
 
-def generate_data():
-    x = np.linspace(0, 5, 50)
-    y = np.linspace(0, 5, 40)
-
-    X, Y = np.meshgrid(x, y)
-    Z = f(X, Y)
-
-    return X, Y, Z
-
 def return_Z(x,y):
     if x == None or y == None:
         return 0
+    elif (x < TL_X or x > BR_X):
+        return 0
+    elif (y < TL_Y or y > BR_Y):
+        return 0
     else:
-        return f(x,y)
+        x_c = (x - TL_X)*MAX_X/(BR_X-TL_X)
+        y_c = (y - TL_Y)*MAX_Y/(BR_Y-TL_Y)
+        return f(x_c,y_c)
 
 def read_Serial():
     ser.reset_input_buffer()
@@ -43,9 +47,10 @@ def read_Serial():
     decoded_bytes = (ser_bytes[0:len(ser_bytes)-2].decode("utf-8")).split(",")
     return decoded_bytes
 
+serialIn = ""
 
 class MainWindow(QtWidgets.QMainWindow):
-
+    
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
 
@@ -64,6 +69,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pen_y = 0
         self.pen_pressure = 0
         self.text = ""
+        self.pen_z = 0
 
         self.inDemos = False
 
@@ -83,21 +89,26 @@ class MainWindow(QtWidgets.QMainWindow):
         topLLayout.addWidget(self.button1)
         #self.button1.clicked.connect(self.switch2)
 
-        topMLayout = QFormLayout()
-        topMLayout.addRow("Hello there", QLineEdit())
+        # self.topMLayout = QHBoxLayout()
+        # self.textbox = QLineEdit(self)
+        # # self.textbox.move(20, 20)
+        # # self.textbox.resize(280,40)
+        # label = QLabel("Serial Input")
+        # self.topMLayout.addWidget(label)
+        # self.topMLayout.addWidget(self.textbox)
+        # self.textbox.setText("What the dog doin???")
+        # self.topMLayout.addRow("Serial Input", QLineEdit())
         
         topLayout = QHBoxLayout()
         topLayout.addLayout(topLLayout)
-        topLayout.addLayout(topMLayout)
-        topLayout.addSpacing(int(self.width/4))
+        topLayout.addSpacing(int(self.width/2))
 
         self.stackedLayout = QStackedLayout()
 
         TestWidget = Tests()
         self.stackedLayout.addWidget(TestWidget)
-        DemoWidget = Demos()
-        self.stackedLayout.addWidget(DemoWidget)
-
+        self.DemoWidget = Demos()
+        self.stackedLayout.addWidget(self.DemoWidget)
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(topLayout,1)
@@ -106,6 +117,10 @@ class MainWindow(QtWidgets.QMainWindow):
         widget = QWidget()
         widget.setLayout(self.layout)
         self.setCentralWidget(widget)
+
+        # self.timer = QtCore.QTimer(self)
+        # self.timer.setInterval(20)
+        # self.timer.timeout.connect(self.TextUpdate)  
 
         self.showMaximized()
 
@@ -128,9 +143,13 @@ class MainWindow(QtWidgets.QMainWindow):
         
         if self.pen_is_down:
             self.text += " Stylus  is touching"
+            self.pen_z = return_Z(self.pen_x, self.pen_y)
+            self.DemoWidget.textadd(self.pen_z)
+            #self.DemoWidget.textsend()
         else:
             self.text += " Stylus not touching"
         
+        self.text += " \n z={0}".format(self.pen_z)
         tabletEvent.accept()
         self.update()
 
@@ -172,19 +191,55 @@ class Demos(QWidget):
         QWidget.__init__(self)
         layout = QGridLayout()
         self.setLayout(layout)
+        self.text = ""
+        self.output = 0
+        self.x = 0
+        self.y = 0
+        self.z = 0
+
+        self.timer = QtCore.QTimer(self)
+        self.timer.setInterval(20)
+        self.timer.timeout.connect(self.TextUpdate)  
+        self.timer.start()
+
+        self.textbox = QLineEdit(self)
+        self.textbox.move(20, 20)
+        self.textbox.resize(280,40)
 
         #Demo 1
         self.sc = MplCanvas(self)
-        X,Y,Z = generate_data()
-        self.sc.axes.contourf(X,Y,Z, 60, cmap='jet')
+        self.generate_data()
+        self.sc.axes.contourf(self.x, self.y, self.z, 60, cmap='jet')
 
         #Demo 2
         label2 = QLabel("Widget in Tab 2.")
 
+        
         tabwidget = QTabWidget()
         tabwidget.addTab(self.sc, "Demo 1")
         tabwidget.addTab(label2, "Demo 2")
-        layout.addWidget(tabwidget, 0, 0)
+
+        layout.addWidget(self.textbox,0,0)
+        layout.addWidget(tabwidget, 1, 0)
+
+    def textsend(self):
+        ser.write(self.output.encode())
+
+    def textadd(self, text):
+        self.output = ("Z:{:+.2f},".format(text))
+
+    def generate_data(self):
+        x = np.linspace(0, 5, 50)
+        y = np.linspace(0, 5, 40)
+
+        self.x, self.y = np.meshgrid(x, y)
+        self.z = f(self.x, self.y)
+
+    def TextUpdate(self):
+        try:
+            self.textbox.setText(read_Serial()[-1])
+        except:
+            print("Error while reading serial")
 
 class Tests(QWidget):
     def __init__(self):
