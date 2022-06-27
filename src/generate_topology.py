@@ -42,9 +42,12 @@ def return_Z(x,y):
         return f(x_c,y_c)
 
 def read_Serial():
-    ser.reset_input_buffer()
-    ser_bytes = ser.readline()
-    decoded_bytes = (ser_bytes[0:len(ser_bytes)-2].decode("utf-8")).split(",")
+    try:
+        ser.reset_input_buffer()
+        ser_bytes = ser.readline()
+        decoded_bytes = (ser_bytes[0:len(ser_bytes)-2].decode("utf-8")).split(",")
+    except:
+        decoded_bytes = 0
     return decoded_bytes
 
 serialIn = ""
