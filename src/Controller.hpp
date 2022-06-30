@@ -7,6 +7,7 @@ float computePID(float Kp, float Ki, float Kd, float error, float prevError,
                 float dt, float arw_value, float &integral);
 float ViscousFricComp(float speed);
 float StaticFricComp(float speed);
+float hapt_ComputeWall(float stiff, float damp, float pos, float speed, float wall_pos);
 
 #define DEADZONE_DRY 3
 #define FRIC_STATIC_POS 50

@@ -49,7 +49,6 @@ float ComputeNumIntegral(float prevValue, float currentValue, float dt, float in
 	return integral;
 }
 
-
 /**
 * @brief Computes a PID control value
 * @param Kp: proportional gain
@@ -94,5 +93,24 @@ float StaticFricComp(float speed)
 {
 	if(speed > DEADZONE_DRY) return FRIC_STATIC_NEG;
 	else if(speed < -DEADZONE_DRY) return -FRIC_STATIC_NEG;
+	else return 0;
+}
+
+/**
+* @brief Computes a Virtual wall at a given angle WALL_ANGLE
+* @param stiff: wall stiffness
+* @param damp: wall damping
+* @param angle: current paddle angle, used to calculate stiffness effect
+* @param speed: current paddle speed, used to calculate damping effect
+* @return the desired force that needs to be applied to the system at the end of the paddle
+*/
+float hapt_ComputeWall(float stiff, float damp, float pos, float speed, float wall_pos)
+{
+	float damping;
+	if(speed > DEADZONE_VISCOUS || speed < -DEADZONE_VISCOUS) damping = damp*speed;
+	else damping = 0;
+
+	if(pos > wall_pos) return stiff*(wall_pos-pos) - damping;
+	else if(pos < -wall_pos) return stiff*(wall_pos-pos) - damping;
 	else return 0;
 }

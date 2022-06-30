@@ -64,8 +64,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.resize(self.width, self.height)
         self.move(-9, 0)
 
-        #plot the topo map
-
         #handle tablet
         self.pen_is_down = False
         self.pen_x = 0
@@ -342,8 +340,8 @@ class Tests(QWidget):
     def graph_index_changed(self, index):
         #print("Shrubbery")
         self.graph_idx = index
-        self.x = [0]*70
-        self.y = [0]*70
+        self.x = [0]*100
+        self.y = [0]*100
         self.data_line.setData(self.x, self.y)       
 
     def send(self):
@@ -362,8 +360,8 @@ class Tests(QWidget):
 
         # refresh list of inputs
         self.graph_idx = 0
-        self.x = [0]*70
-        self.y = [0]*70
+        self.x = [0]*100
+        self.y = [0]*100
         self.data_line.setData(self.x, self.y) 
         self.graph_sel.clear()
         self.update()
